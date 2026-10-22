@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { getDesign } from "@/designs/registry";
 import { getDb, schema } from "@/lib/db";
-import { env } from "@/lib/env";
+import { checkoutOpen, env } from "@/lib/env";
 import { getGiftByEditToken } from "@/lib/gifts";
 import { createCheckout } from "@/lib/payments";
 import { foreverUpgradeCents, friendly, countryFactor } from "@/lib/pricing";
@@ -10,6 +10,7 @@ import { newId } from "@/lib/tokens";
 
 // Lets the buyer keep a gift online forever after purchase.
 export async function POST(req: Request) {
+  if (!checkoutOpen) return Response.json({ error: "Checkout opens very soon. Your draft is saved on this device." }, { status: 503 });
   const parsed = z.object({ token: z.string().min(10) }).safeParse(await req.json().catch(() => null));
   if (!parsed.success) return Response.json({ error: "Bad request" }, { status: 400 });
   const gift = await getGiftByEditToken(parsed.data.token);

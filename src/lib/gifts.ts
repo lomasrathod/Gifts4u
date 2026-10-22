@@ -8,6 +8,8 @@ import { hashSecret, newId, newSecret } from "@/lib/tokens";
 const YEAR_MS = 365 * 24 * 60 * 60 * 1000;
 const { gifts, orders, answers } = schema;
 
+const SCHEDULE_AHEAD_MS = 48 * 60 * 60 * 1000;
+
 export function isOnline(gift: Gift, now = Date.now()) {
   return gift.status === "paid" && (gift.expiresAt === null || gift.expiresAt.getTime() > now);
 }
@@ -63,7 +65,7 @@ export async function completeOrder(orderId: string, providerRef?: string) {
   await sendEmail(
     emails.receipt({ to: gift.buyerEmail, buyerName: gift.buyerName, slug: gift.slug, editToken: token, designName: design?.name ?? "gift" }),
   );
-  if (gift.delivery === "email" && gift.recipientEmail && (!gift.sendAt || gift.sendAt.getTime() <= Date.now())) {
+  if (gift.delivery === "email" && gift.recipientEmail && (!gift.sendAt || gift.sendAt.getTime() <= Date.now() + SCHEDULE_AHEAD_MS)) {
     await deliver({ ...gift, status: "paid" });
   }
   return order;
@@ -73,15 +75,22 @@ async function deliver(gift: Gift) {
   const db = await getDb();
   if (!gift.recipientEmail || gift.sentAt) return;
   const design = getDesign(gift.designId);
-  await sendEmail(emails.delivery({ to: gift.recipientEmail, buyerName: gift.buyerName, slug: gift.slug, designName: design?.name ?? "gift" }));
+  // A future send time is handed to the email provider, which holds the email
+  // until then. The daily cron hands over everything due in the next 48 hours.
+  const later = gift.sendAt && gift.sendAt.getTime() > Date.now() + 60_000 ? gift.sendAt : undefined;
+  await sendEmail({
+    ...emails.delivery({ to: gift.recipientEmail, buyerName: gift.buyerName, slug: gift.slug, designName: design?.name ?? "gift" }),
+    scheduledAt: later,
+  });
   await db.update(gifts).set({ sentAt: new Date() }).where(eq(gifts.id, gift.id));
 }
 
-/** Runs from cron: sends scheduled gifts and expiry reminders. */
+/** Runs from the daily cron: schedules upcoming gifts and sends expiry reminders. */
 export async function runScheduledJobs(now = new Date()) {
   const db = await getDb();
+  const horizon = new Date(now.getTime() + SCHEDULE_AHEAD_MS);
   const due = await db.query.gifts.findMany({
-    where: and(eq(gifts.status, "paid"), eq(gifts.delivery, "email"), isNull(gifts.sentAt), isNotNull(gifts.sendAt), lte(gifts.sendAt, now)),
+    where: and(eq(gifts.status, "paid"), eq(gifts.delivery, "email"), isNull(gifts.sentAt), isNotNull(gifts.sendAt), lte(gifts.sendAt, horizon)),
   });
   for (const g of due) await deliver(g);
 

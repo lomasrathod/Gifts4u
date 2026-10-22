@@ -1,20 +1,18 @@
 "use client";
 
-import ReconnectingWebSocket from "partysocket/ws";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { connectRoom, type RoomConnection } from "@/lib/realtime/client";
 import type { ClientMsg, Peer, ServerMsg, Vec3 } from "@/lib/realtime/protocol";
 
 export type ChatLine = { id: string; name: string; color: string; text: string; at: number };
 type EventHandler = (kind: "letter" | "plane" | "answer", from: string, data?: string) => void;
-
-const REALTIME_URL = process.env.NEXT_PUBLIC_REALTIME_URL ?? "ws://localhost:8787";
 
 /**
  * Connects to a shared room. Positions live in a ref (read every frame by the
  * scene); the peer list and chat live in state for the HUD.
  */
 export function useRoom(roomId: string | null, me: { name: string; color: string } | null, onEvent: EventHandler) {
-  const socket = useRef<ReconnectingWebSocket | null>(null);
+  const socket = useRef<RoomConnection | null>(null);
   const positions = useRef(new Map<string, { p: Vec3; r: number }>());
   const [peers, setPeers] = useState<Peer[]>([]);
   const [chat, setChat] = useState<ChatLine[]>([]);
@@ -26,14 +24,8 @@ export function useRoom(roomId: string | null, me: { name: string; color: string
   useEffect(() => {
     if (!roomId || !me) return;
     setStatus("connecting");
-    const ws = new ReconnectingWebSocket(`${REALTIME_URL}/room/${roomId}`, [], { maxRetries: 20 });
-    socket.current = ws;
     const names = new Map<string, Peer>();
-
-    ws.addEventListener("open", () => ws.send(JSON.stringify({ t: "hello", ...me } satisfies ClientMsg)));
-    ws.addEventListener("close", () => setStatus((s) => (s === "full" ? s : "connecting")));
-    ws.addEventListener("message", (e: MessageEvent) => {
-      const msg = JSON.parse(String(e.data)) as ServerMsg;
+    const conn = connectRoom(roomId, me, (msg: ServerMsg) => {
       switch (msg.t) {
         case "welcome":
           myId.current = msg.id;
@@ -69,19 +61,18 @@ export function useRoom(roomId: string | null, me: { name: string; color: string
           break;
         case "full":
           setStatus("full");
-          ws.close();
           break;
       }
     });
+    socket.current = conn;
     return () => {
-      ws.close();
+      conn.close();
       socket.current = null;
     };
   }, [roomId, me]);
 
   const send = useCallback((msg: ClientMsg) => {
-    const ws = socket.current;
-    if (ws && ws.readyState === ws.OPEN) ws.send(JSON.stringify(msg));
+    socket.current?.send(msg);
   }, []);
 
   return { peers, positions, chat, status, send };

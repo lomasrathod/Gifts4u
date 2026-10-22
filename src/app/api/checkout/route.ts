@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { getDesign, missingFields, sanitizeContent } from "@/designs/registry";
 import { getDb, schema } from "@/lib/db";
-import { env } from "@/lib/env";
+import { checkoutOpen, env } from "@/lib/env";
 import { createCheckout } from "@/lib/payments";
 import { quote } from "@/lib/pricing";
 import { allow, clientCountry, clientIp } from "@/lib/rate-limit";
@@ -22,6 +22,7 @@ const body = z.object({
 });
 
 export async function POST(req: Request) {
+  if (!checkoutOpen) return Response.json({ error: "Checkout opens very soon. Your draft is saved on this device." }, { status: 503 });
   if (!allow(`checkout:${clientIp(req)}`, 20, 60 * 60 * 1000)) {
     return Response.json({ error: "Too many tries. Please wait a few minutes." }, { status: 429 });
   }
@@ -36,6 +37,11 @@ export async function POST(req: Request) {
   if (missing.length) return Response.json({ error: `Please fill in: ${missing.join(", ")}` }, { status: 400 });
   if (input.delivery === "email" && !input.recipientEmail) {
     return Response.json({ error: "Add their email, or choose to get the link yourself." }, { status: 400 });
+  }
+
+  if (input.delivery === "email" && input.sendAt) {
+    const at = new Date(input.sendAt).getTime();
+    if (at > Date.now() + 366 * 24 * 60 * 60 * 1000) return Response.json({ error: "Pick a send date within the next year." }, { status: 400 });
   }
 
   const country = clientCountry(req);

@@ -1,34 +1,35 @@
-import { sqliteTable, text, integer, index } from "drizzle-orm/sqlite-core";
+import { boolean, index, integer, jsonb, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
-export const gifts = sqliteTable(
+const ts = (name: string) => timestamp(name, { withTimezone: true, mode: "date" });
+
+export const gifts = pgTable(
   "gifts",
   {
     id: text("id").primaryKey(),
     slug: text("slug").notNull().unique(),
     designId: text("design_id").notNull(),
-    // JSON: { fields: Record<string,string>, photos: string[] }
-    content: text("content", { mode: "json" }).notNull().$type<GiftContent>(),
+    content: jsonb("content").notNull().$type<GiftContent>(),
     status: text("status", { enum: ["draft", "paid", "deleted"] }).notNull().default("draft"),
     buyerName: text("buyer_name").notNull(),
     buyerEmail: text("buyer_email").notNull(),
     keepsake: text("keepsake", { enum: ["year", "forever"] }).notNull().default("year"),
-    notifyAnswer: integer("notify_answer", { mode: "boolean" }).notNull().default(true),
+    notifyAnswer: boolean("notify_answer").notNull().default(true),
     delivery: text("delivery", { enum: ["link", "email"] }).notNull().default("link"),
     recipientEmail: text("recipient_email"),
-    sendAt: integer("send_at", { mode: "timestamp_ms" }),
-    sentAt: integer("sent_at", { mode: "timestamp_ms" }),
+    sendAt: ts("send_at"),
+    sentAt: ts("sent_at"),
     editTokenHash: text("edit_token_hash").notNull(),
-    expiresAt: integer("expires_at", { mode: "timestamp_ms" }),
-    expiryReminderSentAt: integer("expiry_reminder_sent_at", { mode: "timestamp_ms" }),
-    paidAt: integer("paid_at", { mode: "timestamp_ms" }),
-    openedAt: integer("opened_at", { mode: "timestamp_ms" }),
-    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
-    updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+    expiresAt: ts("expires_at"),
+    expiryReminderSentAt: ts("expiry_reminder_sent_at"),
+    paidAt: ts("paid_at"),
+    openedAt: ts("opened_at"),
+    createdAt: ts("created_at").notNull(),
+    updatedAt: ts("updated_at").notNull(),
   },
-  (t) => [index("gifts_buyer_email_idx").on(t.buyerEmail), index("gifts_send_at_idx").on(t.sendAt)],
+  (t) => [index("gifts_buyer_email_idx").on(t.buyerEmail), index("gifts_send_at_idx").on(t.sendAt), index("gifts_edit_token_idx").on(t.editTokenHash)],
 );
 
-export const orders = sqliteTable("orders", {
+export const orders = pgTable("orders", {
   id: text("id").primaryKey(),
   giftId: text("gift_id").notNull(),
   kind: text("kind", { enum: ["gift", "upgrade"] }).notNull(),
@@ -38,15 +39,15 @@ export const orders = sqliteTable("orders", {
   provider: text("provider", { enum: ["dodo", "dev"] }).notNull(),
   providerRef: text("provider_ref"),
   status: text("status", { enum: ["pending", "paid", "failed"] }).notNull().default("pending"),
-  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  createdAt: ts("created_at").notNull(),
 });
 
-export const answers = sqliteTable("answers", {
+export const answers = pgTable("answers", {
   id: text("id").primaryKey(),
   giftId: text("gift_id").notNull(),
   answer: text("answer").notNull(),
   note: text("note"),
-  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  createdAt: ts("created_at").notNull(),
 });
 
 export type GiftContent = { fields: Record<string, string>; photos: string[] };

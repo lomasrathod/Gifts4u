@@ -1,45 +1,59 @@
-import { createClient } from "@libsql/client";
-import { drizzle } from "drizzle-orm/libsql";
-import { mkdirSync } from "node:fs";
+import { drizzle as drizzlePg } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 import { env } from "@/lib/env";
 import * as schema from "./schema";
 
-// Tables are created on first use so local development needs no migration step.
-// Keep this in sync with schema.ts (drizzle-kit push does the same for production).
+// Tables are created on first use, so a fresh database (Supabase, Neon, any Postgres)
+// needs no migration step. Keep this in sync with schema.ts.
 const BOOTSTRAP = `
 CREATE TABLE IF NOT EXISTS gifts (
-  id TEXT PRIMARY KEY, slug TEXT NOT NULL UNIQUE, design_id TEXT NOT NULL, content TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'draft', buyer_name TEXT NOT NULL, buyer_email TEXT NOT NULL,
-  keepsake TEXT NOT NULL DEFAULT 'year', notify_answer INTEGER NOT NULL DEFAULT 1,
-  delivery TEXT NOT NULL DEFAULT 'link', recipient_email TEXT, send_at INTEGER, sent_at INTEGER,
-  edit_token_hash TEXT NOT NULL, expires_at INTEGER, expiry_reminder_sent_at INTEGER, paid_at INTEGER, opened_at INTEGER,
-  created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
+  id text PRIMARY KEY, slug text NOT NULL UNIQUE, design_id text NOT NULL, content jsonb NOT NULL,
+  status text NOT NULL DEFAULT 'draft', buyer_name text NOT NULL, buyer_email text NOT NULL,
+  keepsake text NOT NULL DEFAULT 'year', notify_answer boolean NOT NULL DEFAULT true,
+  delivery text NOT NULL DEFAULT 'link', recipient_email text, send_at timestamptz, sent_at timestamptz,
+  edit_token_hash text NOT NULL, expires_at timestamptz, expiry_reminder_sent_at timestamptz,
+  paid_at timestamptz, opened_at timestamptz, created_at timestamptz NOT NULL, updated_at timestamptz NOT NULL
 );
 CREATE INDEX IF NOT EXISTS gifts_buyer_email_idx ON gifts (buyer_email);
 CREATE INDEX IF NOT EXISTS gifts_send_at_idx ON gifts (send_at);
+CREATE INDEX IF NOT EXISTS gifts_edit_token_idx ON gifts (edit_token_hash);
 CREATE TABLE IF NOT EXISTS orders (
-  id TEXT PRIMARY KEY, gift_id TEXT NOT NULL, kind TEXT NOT NULL, amount_cents INTEGER NOT NULL,
-  country TEXT NOT NULL, discount_code TEXT, provider TEXT NOT NULL, provider_ref TEXT,
-  status TEXT NOT NULL DEFAULT 'pending', created_at INTEGER NOT NULL
+  id text PRIMARY KEY, gift_id text NOT NULL, kind text NOT NULL, amount_cents integer NOT NULL,
+  country text NOT NULL, discount_code text, provider text NOT NULL, provider_ref text,
+  status text NOT NULL DEFAULT 'pending', created_at timestamptz NOT NULL
 );
 CREATE TABLE IF NOT EXISTS answers (
-  id TEXT PRIMARY KEY, gift_id TEXT NOT NULL, answer TEXT NOT NULL, note TEXT, created_at INTEGER NOT NULL
+  id text PRIMARY KEY, gift_id text NOT NULL, answer text NOT NULL, note text, created_at timestamptz NOT NULL
 );
 `;
 
-function makeDb() {
-  if (env.databaseUrl.startsWith("file:")) mkdirSync(".data", { recursive: true });
-  const client = createClient({ url: env.databaseUrl, authToken: env.databaseAuthToken });
-  const ready = client.executeMultiple(BOOTSTRAP);
-  return { db: drizzle(client, { schema }), ready };
+type Db = ReturnType<typeof drizzlePg<typeof schema>>;
+
+async function makeDb(): Promise<Db> {
+  if (env.databaseUrl) {
+    // prepare:false keeps it compatible with transaction-mode poolers (Supabase, Neon).
+    const client = postgres(env.databaseUrl, { prepare: false, max: 5 });
+    await client.unsafe(BOOTSTRAP);
+    return drizzlePg(client, { schema });
+  }
+  // No database configured: an embedded Postgres (PGlite) on local disk.
+  // Fine for development and demos; production checkout stays closed in this mode.
+  const { PGlite } = await import("@electric-sql/pglite");
+  const { drizzle } = await import("drizzle-orm/pglite");
+  const dir = process.env.VERCEL ? "/tmp/gifts4u-db" : ".data/pglite";
+  const client = new PGlite(dir);
+  await client.exec(BOOTSTRAP);
+  return drizzle(client, { schema }) as unknown as Db;
 }
 
-const globalForDb = globalThis as unknown as { __gv?: ReturnType<typeof makeDb> };
-const instance = (globalForDb.__gv ??= makeDb());
+const g = globalThis as unknown as { __gvDb?: Promise<Db> };
 
-export async function getDb() {
-  await instance.ready;
-  return instance.db;
+export function getDb(): Promise<Db> {
+  g.__gvDb ??= makeDb().catch((err) => {
+    g.__gvDb = undefined;
+    throw err;
+  });
+  return g.__gvDb;
 }
 
 export { schema };

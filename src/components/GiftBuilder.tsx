@@ -11,11 +11,11 @@ import { AiInterview } from "./AiInterview";
 import { GiftFields } from "./GiftFields";
 import { PhoneFrame } from "./PhoneFrame";
 
-type Props = { design: DesignMeta; quotes: { year: Quote; forever: Quote }; devCheckout: boolean };
+type Props = { design: DesignMeta; quotes: { year: Quote; forever: Quote }; devCheckout: boolean; checkoutOpen: boolean };
 
 const emptyContent = (d: DesignMeta): GiftContent => ({ fields: Object.fromEntries(d.fields.map((f) => [f.key, ""])), photos: [] });
 
-export function GiftBuilder({ design, quotes, devCheckout }: Props) {
+export function GiftBuilder({ design, quotes, devCheckout, checkoutOpen }: Props) {
   const draftKey = `gv-draft-${design.id}`;
   const [content, setContent] = useState<GiftContent>(() => emptyContent(design));
   const [keepsake, setKeepsake] = useState<"year" | "forever">("year");
@@ -211,9 +211,14 @@ export function GiftBuilder({ design, quotes, devCheckout }: Props) {
             {q.discountCents > 0 && <Row label={q.discountLabel ?? "Discount"} value={`−${formatUsd(q.discountCents)}`} />}
           </dl>
           {error && <p className="mt-3 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-          <button className="btn-primary mt-4 w-full text-lg" disabled={busy}>
-            {busy ? "Opening checkout…" : `Pay ${formatUsd(q.totalCents)} and get your link`}
+          <button className="btn-primary mt-4 w-full text-lg" disabled={busy || !checkoutOpen}>
+            {!checkoutOpen ? "Checkout opens very soon" : busy ? "Opening checkout…" : `Pay ${formatUsd(q.totalCents)} and get your link`}
           </button>
+          {!checkoutOpen && (
+            <p className="mt-2 text-center text-sm text-muted">
+              Your draft is saved on this device. <a className="font-semibold text-rose underline" href={`/demo/${design.id}`}>Try the demo</a> meanwhile.
+            </p>
+          )}
           <p className="mt-2 text-center text-xs text-muted">
             One-time payment in USD{q.country !== "US" ? `, adjusted for ${q.country}` : ""}. Full refund within 7 days if they haven&apos;t answered yet.
             {devCheckout && " (Dev mode: no real payment.)"}

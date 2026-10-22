@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { GiftBuilder } from "@/components/GiftBuilder";
 import { Footer, Header } from "@/components/SiteChrome";
 import { designs, getDesign } from "@/designs/registry";
-import { paymentsEnabled } from "@/lib/env";
+import { checkoutOpen, paymentsEnabled } from "@/lib/env";
 import { quote } from "@/lib/pricing";
 
 export function generateStaticParams() {
@@ -28,7 +28,7 @@ export default async function DesignPage({ params }: { params: Promise<{ id: str
   return (
     <>
       <Header />
-      <GiftBuilder design={design} quotes={quotes} devCheckout={!paymentsEnabled} />
+      <GiftBuilder design={design} quotes={quotes} devCheckout={!paymentsEnabled} checkoutOpen={checkoutOpen} />
       <Footer />
     </>
   );

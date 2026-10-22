@@ -1,17 +1,40 @@
 import { env } from "@/lib/env";
 
-type Mail = { to: string; subject: string; text: string; html?: string };
+type Mail = { to: string; subject: string; text: string; html?: string; scheduledAt?: Date };
+
+const escapeHtml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+/** A simple, warm HTML version of a plain-text email. Links become buttons-ish links. */
+export function toHtml(text: string) {
+  const paras = text
+    .split(/\n{2,}/)
+    .map((p) =>
+      escapeHtml(p)
+        .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" style="color:#e0457b;font-weight:600;word-break:break-all">$1</a>')
+        .replace(/\n/g, "<br>"),
+    )
+    .map((p) => `<p style="margin:0 0 16px">${p}</p>`)
+    .join("");
+  return `<!doctype html><html><body style="margin:0;background:#fff7f2;padding:32px 16px;font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#2b1d24;font-size:16px;line-height:1.55"><div style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:18px;padding:28px 26px;box-shadow:0 2px 12px rgba(80,30,50,.06)">${paras}</div></body></html>`;
+}
 
 /** Sends through Resend when configured; otherwise logs the email (dev). */
 export async function sendEmail(mail: Mail): Promise<void> {
   if (!env.resendApiKey) {
-    console.log(`\n[email] to=${mail.to}\nsubject: ${mail.subject}\n${mail.text}\n`);
+    console.log(`\n[email] to=${mail.to}${mail.scheduledAt ? ` at=${mail.scheduledAt.toISOString()}` : ""}\nsubject: ${mail.subject}\n${mail.text}\n`);
     return;
   }
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${env.resendApiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ from: env.emailFrom, to: mail.to, subject: mail.subject, text: mail.text, html: mail.html }),
+    body: JSON.stringify({
+      from: env.emailFrom,
+      to: mail.to,
+      subject: mail.subject,
+      text: mail.text,
+      html: mail.html ?? toHtml(mail.text),
+      ...(mail.scheduledAt ? { scheduled_at: mail.scheduledAt.toISOString() } : {}),
+    }),
   });
   if (!res.ok) throw new Error(`Email failed (${res.status}): ${await res.text()}`);
 }
