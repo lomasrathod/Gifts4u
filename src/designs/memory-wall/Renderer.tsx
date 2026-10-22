@@ -65,7 +65,9 @@ export default function MemoryWall({ content, onAnswer }: RendererProps) {
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={photoUrl(n.photo)} alt="" className="h-full w-full object-cover" />
                   ) : (
-                    <span className="block h-full w-full" style={{ background: TINTS[i] }} />
+                    <span className="grid h-full w-full place-items-center text-5xl sm:text-6xl" style={{ background: TINTS[i] }}>
+                      {["📸", "🎉", "🍕", "🎤", "🌻", "🥂"][i % 6]}
+                    </span>
                   )}
                 </span>
                 <span className="absolute inset-0 grid place-items-center bg-[#fffdf5] p-4 text-center font-display text-base leading-snug shadow-xl [backface-visibility:hidden] [transform:rotateY(180deg)] sm:text-lg">

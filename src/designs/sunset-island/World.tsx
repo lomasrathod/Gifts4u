@@ -11,7 +11,7 @@ import type { Input } from "../shared/world/Hud";
 import { Fireworks } from "../shared/world/Particles";
 import { textTexture } from "../shared/world/textures";
 
-const ISLAND_R = 13.5;
+const ISLAND_R = 13.2;
 const PIER = { x0: 11, x1: 26, halfW: 1.3 };
 const BOTTLE: Vec3 = [-6.5, 0, -7.5];
 
@@ -20,8 +20,8 @@ function walkable(x: number, z: number) {
 }
 
 // Island = flattened sphere of sand with a smaller flattened sphere of grass on top.
-const SAND = { r: 14.5, y: -2.6, k: 0.22 };
-const GRASS = { r: 8, y: -1.15, k: 0.22, x: -1, z: -1 };
+const SAND = { r: 15, y: -0.75, k: 0.14 };
+const GRASS = { r: 8, y: 0.26, k: 0.22, x: -1, z: -1 };
 
 function capHeight(c: { r: number; y: number; k: number }, d: number) {
   return d < c.r ? c.y + c.k * Math.sqrt(c.r * c.r - d * d) : -Infinity;
@@ -110,7 +110,7 @@ function Ocean() {
   });
   return (
     <mesh geometry={geo} position={[0, 0, 0]} receiveShadow>
-      <meshPhongMaterial ref={mat} color="#2f4f9e" emissive="#ff8a5c" emissiveIntensity={0.08} specular="#ffd2a8" shininess={90} />
+      <meshPhongMaterial ref={mat} color="#3a8fc7" emissive="#ff9a6a" emissiveIntensity={0.08} specular="#ffd2a8" shininess={90} />
     </mesh>
   );
 }
@@ -135,8 +135,8 @@ function Island() {
       {palms.map((t, i) => (
         <Palm key={i} position={t.p} lean={t.lean} scale={t.s} />
       ))}
-      {[[9, 0.3, -6], [-10, 0.2, 6], [4, 0.3, 10]].map((p, i) => (
-        <mesh key={i} position={p as Vec3} castShadow>
+      {[[9, 0.3, -6], [-10, 0.2, 6], [10.5, 0.3, 6.5]].map((p, i) => (
+        <mesh key={i} position={[p[0]!, groundY(p[0]!, p[2]!) + 0.1, p[2]!]} castShadow>
           <dodecahedronGeometry args={[0.8 + i * 0.2]} />
           <meshStandardMaterial color="#8b7f7a" roughness={0.9} flatShading />
         </mesh>

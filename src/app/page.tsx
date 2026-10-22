@@ -19,27 +19,45 @@ export default async function Home() {
       <main>
         <section className="relative overflow-hidden">
           <div className="pointer-events-none absolute -top-40 left-1/2 h-[520px] w-[900px] -translate-x-1/2 rounded-full bg-gradient-to-b from-blush to-transparent blur-2xl" />
-          <div className="relative mx-auto max-w-6xl px-4 pb-16 pt-14 sm:pt-24">
-            <p className="animate-rise text-sm font-semibold uppercase tracking-[0.2em] text-rose">Digital gifts with your words in them</p>
-            <h1 className="animate-rise mt-4 max-w-3xl font-display text-5xl leading-[1.05] sm:text-7xl" style={{ animationDelay: ".05s" }}>
-              Gifts you open <em className="text-rose">together.</em>
-            </h1>
-            <p className="animate-rise mt-6 max-w-2xl text-lg text-muted sm:text-xl" style={{ animationDelay: ".1s" }}>
-              Your words and photos become a 3D island you walk through together, or an animated letter that ends with
-              your question. Ready in ten minutes. Sent as a private link.
-            </p>
-            <div className="animate-rise mt-8 flex flex-wrap gap-3" style={{ animationDelay: ".15s" }}>
-              <Link href="#designs" className="btn-primary">Choose a design</Link>
-              <Link href="/demo/sunset-island" className="btn-ghost">Try the island with someone →</Link>
+          <div className="relative mx-auto grid max-w-6xl items-center gap-12 px-4 pb-16 pt-12 sm:pt-20 lg:grid-cols-[1.05fr_1fr]">
+            <div>
+              <p className="animate-rise text-sm font-semibold uppercase tracking-[0.2em] text-rose">Digital gifts with your words in them</p>
+              <h1 className="animate-rise mt-4 font-display text-5xl leading-[1.04] sm:text-7xl" style={{ animationDelay: ".05s" }}>
+                Gifts you open <em className="text-rose">together.</em>
+              </h1>
+              <p className="animate-rise mt-6 max-w-xl text-lg text-muted sm:text-xl" style={{ animationDelay: ".1s" }}>
+                Your words and photos become a 3D world you walk through together, or an animated letter that ends with your
+                question. Ready in ten minutes. Sent as a private link.
+              </p>
+              <div className="animate-rise mt-8 flex flex-wrap gap-3" style={{ animationDelay: ".15s" }}>
+                <Link href="#designs" className="btn-primary">Choose a design</Link>
+                <Link href="/demo/our-museum" className="btn-ghost">Walk the museum with someone →</Link>
+              </div>
+              <ul className="mt-10 grid gap-3 text-sm sm:grid-cols-3">
+                {["A full year online, included", "Get told when they answer", "No account, no app"].map((t) => (
+                  <li key={t} className="flex items-center gap-2">
+                    <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-rose/10 text-rose">✓</span>
+                    {t}
+                  </li>
+                ))}
+              </ul>
             </div>
-            <ul className="mt-10 grid max-w-3xl gap-3 text-sm sm:grid-cols-3">
-              {["A full year online, included", "Get told when they answer", "No account, no app"].map((t) => (
-                <li key={t} className="flex items-center gap-2">
-                  <span className="grid h-5 w-5 place-items-center rounded-full bg-rose/10 text-rose">✓</span>
-                  {t}
-                </li>
-              ))}
-            </ul>
+
+            <div className="animate-rise relative mx-auto w-full max-w-lg pb-10" style={{ animationDelay: ".2s" }} aria-hidden>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/covers/our-museum.jpg" alt="" className="aspect-[4/3] w-full -rotate-2 rounded-[28px] object-cover shadow-2xl shadow-rose/20 ring-1 ring-black/5" />
+              <div className="absolute -bottom-2 -right-2 w-[38%] rotate-3 overflow-hidden rounded-[26px] border-[6px] border-ink bg-ink shadow-2xl sm:-right-6">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/covers/sakura-night.jpg" alt="" className="aspect-[9/16] w-full object-cover" />
+              </div>
+              <div className="absolute -left-3 bottom-4 flex items-center gap-3 rounded-2xl bg-white px-4 py-3 shadow-xl ring-1 ring-black/5 sm:-left-8">
+                <span className="grid h-9 w-9 place-items-center rounded-full bg-rose/10 text-lg">💌</span>
+                <span className="text-sm leading-tight">
+                  <b className="block">Maya said yes 💛</b>
+                  <span className="text-muted">You get an email the moment they answer</span>
+                </span>
+              </div>
+            </div>
           </div>
         </section>
 

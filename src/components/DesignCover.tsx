@@ -1,14 +1,26 @@
 import type { DesignMeta } from "@/designs/types";
 
-/** Illustrated cover for each design, drawn in CSS/SVG so it loads instantly. */
-export function DesignCover({ design, className = "" }: { design: DesignMeta; className?: string }) {
+/** A real screenshot of each design's demo, over its colours while it loads. */
+export function DesignCover({ design, className = "", eager = false }: { design: DesignMeta; className?: string; eager?: boolean }) {
   const { from, to } = design.palette;
   return (
-    <div
-      className={`relative overflow-hidden ${className}`}
-      style={{ background: `linear-gradient(160deg, ${from}, ${to})` }}
-      aria-hidden
-    >
+    <div className={`relative overflow-hidden ${className}`} style={{ background: `linear-gradient(160deg, ${from}, ${to})` }} aria-hidden>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={`/covers/${design.id}.jpg`}
+        alt=""
+        loading={eager ? "eager" : "lazy"}
+        className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+      />
+    </div>
+  );
+}
+
+/** Drawn covers, kept for designs that don't have a screenshot yet. */
+export function DrawnCover({ design, className = "" }: { design: DesignMeta; className?: string }) {
+  const { from, to } = design.palette;
+  return (
+    <div className={`relative overflow-hidden ${className}`} style={{ background: `linear-gradient(160deg, ${from}, ${to})` }} aria-hidden>
       {design.id === "sunset-island" && <IslandArt />}
       {design.id === "kitty-letter" && <KittyArt />}
       {design.id === "our-universe" && <UniverseArt />}

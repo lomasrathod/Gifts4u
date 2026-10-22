@@ -16,7 +16,7 @@ export const designs: DesignMeta[] = [
     occasions: ["love", "proposal", "anniversary", "long-distance"],
     usdCents: 3999,
     players: 4,
-    minutes: "15 to 40 min together",
+    minutes: "15 to 40 min",
     photos: { max: 3, label: "Up to 3 photos, shown on the pier" },
     question: { field: "question", yes: "Yes!", no: "Let me think" },
     fields: [
@@ -52,7 +52,7 @@ export const designs: DesignMeta[] = [
     occasions: ["anniversary", "love", "proposal", "long-distance", "birthday"],
     usdCents: 2999,
     players: 4,
-    minutes: "10 to 30 min together",
+    minutes: "10 to 30 min",
     photos: { max: 6, label: "Up to 6 photos, hung in gold frames" },
     question: { field: "question", yes: "Yes!", no: "Let me think" },
     fields: [

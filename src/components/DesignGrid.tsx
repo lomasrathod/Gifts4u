@@ -34,7 +34,7 @@ export function DesignGrid({ designs, prices }: { designs: DesignMeta[]; prices:
           </button>
         ))}
       </div>
-      <div className="grid gap-6 sm:grid-cols-2">
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {shown.map((d) => (
           <article key={d.id} className="card group overflow-hidden transition hover:-translate-y-1 hover:shadow-xl hover:shadow-rose/10">
             <Link href={`/designs/${d.id}${suffix}`} className="block">
@@ -42,12 +42,12 @@ export function DesignGrid({ designs, prices }: { designs: DesignMeta[]; prices:
             </Link>
             <div className="p-5">
               <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted">
-                <span className={d.kind === "world" ? "text-rose" : ""}>{d.kind === "world" ? `3D · up to ${d.players} together` : "Animated letter"}</span>
+                <span className={d.kind === "world" ? "text-rose" : ""}>{d.kind === "world" ? `3D · up to ${d.players} people` : "Animated letter"}</span>
                 <span>·</span>
                 <span>{d.minutes}</span>
               </div>
               <div className="mt-2 flex items-baseline justify-between gap-4">
-                <h3 className="font-display text-2xl">{d.name}</h3>
+                <h3 className="font-display text-2xl leading-tight">{d.name}</h3>
                 <span className="font-semibold">{prices[d.id]}</span>
               </div>
               <p className="mt-1 text-muted">{d.tagline}</p>
