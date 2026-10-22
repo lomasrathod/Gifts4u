@@ -1,0 +1,11 @@
+name = "giftvera-realtime"
+main = "worker.ts"
+compatibility_date = "2026-09-01"
+
+[[durable_objects.bindings]]
+name = "ROOMS"
+class_name = "GiftRoom"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["GiftRoom"]
