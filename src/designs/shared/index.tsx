@@ -33,7 +33,7 @@ export function HeartRain({ count = 36, colors = ["#e8456b", "#ff8fab", "#ffc2d1
     [count, colors],
   );
   return (
-    <div className="pointer-events-none fixed inset-0 z-50 overflow-hidden" aria-hidden>
+    <div className="pointer-events-none fixed inset-0 z-30 overflow-hidden" aria-hidden>
       {hearts.map((h, i) => (
         <span
           key={i}

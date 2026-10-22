@@ -66,9 +66,17 @@ export function templateFill(design: DesignMeta, i: Interview): Record<string, s
   const them = i.theirName;
   const me = i.yourName;
   const detail = i.insideJoke || i.story.split(/[.!?]/)[0] || "every small moment with you";
-  const q = i.question || (design.occasions.includes("birthday") ? "" : "Will you be mine, again and again?");
+  const q = i.question || (design.question ? "Will you be mine, again and again?" : "");
   const pool: Record<string, string> = {
-    welcome: `Welcome to our island, ${them}`,
+    welcome: design.id === "our-museum" ? `Welcome to the Museum of Us, ${them}` : `Welcome to our island, ${them}`,
+    title: "The Museum of Us",
+    lines: [
+      `${them}, I'm not always good with words.`,
+      i.insideJoke ? `But I still smile about ${detail}.` : `But I remember ${detail.toLowerCase()}.`,
+      "The small moments are the ones I keep.",
+      "You make ordinary nights feel like this one.",
+      "So I want to ask you something.",
+    ].join("\n"),
     letterTitle: `A small note for ${them}`,
     letter: `${them},\n\nI keep thinking about the little things, like ${i.insideJoke ? `how ${detail}` : detail.toLowerCase()}. Those are the things I will remember when I am old.\n\nYou make ordinary days feel like something worth keeping. So I made you something to keep.\n\nThere is one more thing I want to ask you.`,
     question: q,

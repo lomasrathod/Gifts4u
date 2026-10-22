@@ -2,20 +2,18 @@
 
 import { Sky } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { useEffect, useMemo, useRef } from "react";
+import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import type { Peer, Vec3 } from "@/lib/realtime/protocol";
 import { photoUrl } from "../shared";
-import { nameTag, textTexture } from "./textures";
-
-export type Input = { forward: number; turn: number };
-export type Spot = "bottle" | "pier" | null;
+import { LocalPlayer, Players, type Ground, type Positions } from "../shared/world/Characters";
+import type { Input } from "../shared/world/Hud";
+import { Fireworks } from "../shared/world/Particles";
+import { textTexture } from "../shared/world/textures";
 
 const ISLAND_R = 13.5;
 const PIER = { x0: 11, x1: 26, halfW: 1.3 };
 const BOTTLE: Vec3 = [-6.5, 0, -7.5];
-const SPEED = 5;
-const TURN = 2.4;
 
 function walkable(x: number, z: number) {
   return Math.hypot(x, z) < ISLAND_R || (x > PIER.x0 && x < PIER.x1 && Math.abs(z) < PIER.halfW);
@@ -37,14 +35,23 @@ function groundY(x: number, z: number) {
 export type WorldProps = {
   me: { name: string; color: string };
   peers: Peer[];
-  positions: React.MutableRefObject<Map<string, { p: Vec3; r: number }>>;
+  positions: Positions;
   input: React.MutableRefObject<Input>;
   photos: string[];
   question: string;
   showPlane: boolean;
   celebrate: boolean;
   onMove: (p: Vec3, r: number) => void;
-  onSpot: (spot: Spot) => void;
+  onSpot: (spot: string | null) => void;
+};
+
+const ground: Ground = {
+  walkable,
+  height: groundY,
+  spotAt: (x, z) => (Math.hypot(x - BOTTLE[0], z - BOTTLE[2]) < 2.4 ? "bottle" : x > PIER.x0 + 2 ? "pier" : null),
+  // South beach, facing the island.
+  spawn: { x: 3, z: 8, r: 0.25, spread: 6 },
+  camera: { distance: 7, height: 3.6, lookUpTo: 9 },
 };
 
 export function World(props: WorldProps) {
@@ -83,12 +90,10 @@ function Scene({ me, peers, positions, input, photos, question, showPlane, celeb
       <Island />
       <Pier photos={photos} />
       <Bottle />
-      <LocalPlayer me={me} input={input} onMove={onMove} onSpot={onSpot} lookUp={showPlane || celebrate} />
-      {peers.map((p) => (
-        <RemotePlayer key={p.id} peer={p} positions={positions} />
-      ))}
+      <LocalPlayer me={me} input={input} ground={ground} onMove={onMove} onSpot={onSpot} lookUp={showPlane || celebrate} />
+      <Players peers={peers} positions={positions} />
       {showPlane && <Plane question={question} />}
-      {celebrate && <Fireworks />}
+      {celebrate && <Fireworks radius={17} height={12} />}
     </>
   );
 }
@@ -264,117 +269,6 @@ function Bottle() {
   );
 }
 
-function Avatar({ color, name, bob = 0 }: { color: string; name: string; bob?: number }) {
-  const tag = useMemo(() => nameTag(name), [name]);
-  return (
-    <group position-y={bob}>
-      <mesh position={[0, 0.75, 0]} castShadow>
-        <capsuleGeometry args={[0.38, 0.7, 6, 14]} />
-        <meshStandardMaterial color={color} roughness={0.6} />
-      </mesh>
-      <mesh position={[0, 1.55, 0]} castShadow>
-        <sphereGeometry args={[0.3, 20, 16]} />
-        <meshStandardMaterial color="#ffe0c8" roughness={0.7} />
-      </mesh>
-      {/* eyes show which way they face (-z) */}
-      {[-0.1, 0.1].map((x) => (
-        <mesh key={x} position={[x, 1.6, -0.27]}>
-          <sphereGeometry args={[0.04, 8, 8]} />
-          <meshBasicMaterial color="#2a1240" />
-        </mesh>
-      ))}
-      <sprite position={[0, 2.3, 0]} scale={[1.8, 0.45, 1]}>
-        <spriteMaterial map={tag} transparent depthWrite={false} />
-      </sprite>
-    </group>
-  );
-}
-
-function LocalPlayer({ me, input, onMove, onSpot, lookUp }: Pick<WorldProps, "me" | "input" | "onMove" | "onSpot"> & { lookUp: boolean }) {
-  const ref = useRef<THREE.Group>(null);
-  // Spawn on the south beach, spread out so players don't stand inside each other.
-  const state = useRef({ x: 3 + (Math.random() - 0.5) * 6, z: 8, r: 0.25, sent: 0, moving: 0, spot: null as Spot });
-  const { camera } = useThree();
-  const bob = useRef<THREE.Group>(null);
-  const gaze = useRef(1.4);
-
-  useEffect(() => {
-    camera.position.set(state.current.x, 5, 15);
-    // Lets browser tests move the player directly. Never shipped to production.
-    if (process.env.NODE_ENV !== "production") (window as unknown as { __gvPlayer: unknown }).__gvPlayer = state.current;
-  }, [camera]);
-
-  useFrame(({ clock }, dt) => {
-    const s = state.current;
-    const step = Math.min(dt, 0.05);
-    const { forward, turn } = input.current;
-    s.r -= turn * TURN * step;
-    if (forward) {
-      const nx = s.x - Math.sin(s.r) * forward * SPEED * step;
-      const nz = s.z - Math.cos(s.r) * forward * SPEED * step;
-      if (walkable(nx, nz)) {
-        s.x = nx;
-        s.z = nz;
-      } else if (walkable(nx, s.z)) s.x = nx;
-      else if (walkable(s.x, nz)) s.z = nz;
-    }
-    s.moving = THREE.MathUtils.lerp(s.moving, forward ? 1 : 0, 0.15);
-    const y = groundY(s.x, s.z);
-    ref.current?.position.set(s.x, y, s.z);
-    if (ref.current) ref.current.rotation.y = s.r;
-    if (bob.current) bob.current.position.y = Math.abs(Math.sin(clock.elapsedTime * 9)) * 0.12 * s.moving;
-
-    // Camera follows from behind and above; it tilts up to the sky when the plane arrives.
-    gaze.current = THREE.MathUtils.lerp(gaze.current, lookUp ? 9 : 1.4, 0.02);
-    const behind = new THREE.Vector3(s.x + Math.sin(s.r) * 7, y + (lookUp ? 2.2 : 3.6), s.z + Math.cos(s.r) * 7);
-    camera.position.lerp(behind, 0.08);
-    camera.lookAt(s.x - Math.sin(s.r) * 4, y + gaze.current, s.z - Math.cos(s.r) * 4);
-
-    const t = clock.elapsedTime;
-    if (t - s.sent > 0.1) {
-      s.sent = t;
-      onMove([s.x, y, s.z], s.r);
-    }
-    const spot: Spot =
-      Math.hypot(s.x - BOTTLE[0], s.z - BOTTLE[2]) < 2.4 ? "bottle" : s.x > PIER.x0 + 2 ? "pier" : null;
-    if (spot !== s.spot) {
-      s.spot = spot;
-      onSpot(spot);
-    }
-  });
-
-  return (
-    <group ref={ref}>
-      <group ref={bob}>
-        <Avatar color={me.color} name={me.name} />
-      </group>
-    </group>
-  );
-}
-
-function RemotePlayer({ peer, positions }: { peer: Peer; positions: WorldProps["positions"] }) {
-  const ref = useRef<THREE.Group>(null);
-  const bob = useRef<THREE.Group>(null);
-  const last = useRef(new THREE.Vector3(...peer.p));
-  useFrame(({ clock }) => {
-    const target = positions.current.get(peer.id);
-    if (!target || !ref.current) return;
-    const to = new THREE.Vector3(...target.p);
-    const moving = ref.current.position.distanceTo(to) > 0.02;
-    ref.current.position.lerp(to, 0.2);
-    ref.current.rotation.y = THREE.MathUtils.lerp(ref.current.rotation.y, target.r, 0.2);
-    last.current.copy(to);
-    if (bob.current) bob.current.position.y = moving ? Math.abs(Math.sin(clock.elapsedTime * 9)) * 0.12 : 0;
-  });
-  return (
-    <group ref={ref} position={peer.p}>
-      <group ref={bob}>
-        <Avatar color={peer.color} name={peer.name} />
-      </group>
-    </group>
-  );
-}
-
 function Plane({ question }: { question: string }) {
   const orbit = useRef<THREE.Group>(null);
   const banner = useMemo(() => textTexture(question || "Will you…?", { width: 1536, height: 220, font: "bold 110px Georgia, serif" }), [question]);
@@ -417,70 +311,3 @@ function Plane({ question }: { question: string }) {
   );
 }
 
-function Fireworks() {
-  const COUNT = 6 * 140;
-  const points = useRef<THREE.Points>(null);
-  const data = useMemo(() => {
-    const pos = new Float32Array(COUNT * 3);
-    const vel = new Float32Array(COUNT * 3);
-    const col = new Float32Array(COUNT * 3);
-    return { pos, vel, col, born: new Float32Array(6).fill(-10) };
-  }, [COUNT]);
-  const dot = useMemo(() => {
-    const c = document.createElement("canvas");
-    c.width = c.height = 32;
-    const g = c.getContext("2d")!;
-    const grad = g.createRadialGradient(16, 16, 0, 16, 16, 16);
-    grad.addColorStop(0, "rgba(255,255,255,1)");
-    grad.addColorStop(1, "rgba(255,255,255,0)");
-    g.fillStyle = grad;
-    g.fillRect(0, 0, 32, 32);
-    return new THREE.CanvasTexture(c);
-  }, []);
-  const palette = useMemo(() => ["#ff5d8f", "#ffd27a", "#9be7ff", "#c9a7ff", "#ffffff", "#7dffb2"].map((c) => new THREE.Color(c)), []);
-
-  useFrame(({ clock }, dt) => {
-    const t = clock.elapsedTime;
-    const { pos, vel, col, born } = data;
-    for (let b = 0; b < 6; b++) {
-      if (t - born[b]! > 2.6 + b * 0.15) {
-        born[b] = t + Math.random() * 0.8;
-        const a = Math.random() * Math.PI * 2;
-        const cx = Math.cos(a) * (12 + Math.random() * 10);
-        const cy = 12 + Math.random() * 8;
-        const cz = Math.sin(a) * (12 + Math.random() * 10);
-        const c = palette[(Math.random() * palette.length) | 0]!;
-        for (let i = 0; i < 140; i++) {
-          const k = (b * 140 + i) * 3;
-          const u = Math.random() * 2 - 1;
-          const th = Math.random() * Math.PI * 2;
-          const sp = 6 + Math.random() * 3;
-          const r = Math.sqrt(1 - u * u);
-          pos[k] = cx; pos[k + 1] = cy; pos[k + 2] = cz;
-          vel[k] = r * Math.cos(th) * sp; vel[k + 1] = u * sp; vel[k + 2] = r * Math.sin(th) * sp;
-          col[k] = c.r; col[k + 1] = c.g; col[k + 2] = c.b;
-        }
-      }
-    }
-    const step = Math.min(dt, 0.05);
-    for (let k = 0; k < pos.length; k += 3) {
-      vel[k + 1]! -= 4 * step;
-      vel[k]! *= 0.985; vel[k + 1]! *= 0.985; vel[k + 2]! *= 0.985;
-      pos[k]! += vel[k]! * step; pos[k + 1]! += vel[k + 1]! * step; pos[k + 2]! += vel[k + 2]! * step;
-    }
-    if (points.current) {
-      points.current.geometry.attributes.position!.needsUpdate = true;
-      points.current.geometry.attributes.color!.needsUpdate = true;
-    }
-  });
-
-  return (
-    <points ref={points}>
-      <bufferGeometry>
-        <bufferAttribute attach="attributes-position" args={[data.pos, 3]} />
-        <bufferAttribute attach="attributes-color" args={[data.col, 3]} />
-      </bufferGeometry>
-      <pointsMaterial size={1.1} map={dot} vertexColors transparent opacity={0.95} depthWrite={false} blending={THREE.AdditiveBlending} />
-    </points>
-  );
-}

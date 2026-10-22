@@ -11,5 +11,8 @@ export const renderers: Record<string, ComponentType<RendererProps>> = {
   "kitty-letter": dynamic(() => import("./kitty-letter/Renderer"), { loading: Loading }),
   "our-universe": dynamic(() => import("./our-universe/Renderer"), { loading: Loading }),
   "memory-wall": dynamic(() => import("./memory-wall/Renderer"), { loading: Loading }),
+  "paris-together": dynamic(() => import("./paris-together/Renderer"), { loading: Loading }),
+  "sakura-night": dynamic(() => import("./sakura-night/Renderer"), { loading: Loading }),
+  "our-museum": dynamic(() => import("./our-museum/Renderer"), { loading: Loading, ssr: false }),
   "sunset-island": dynamic(() => import("./sunset-island/Renderer"), { loading: Loading, ssr: false }),
 };

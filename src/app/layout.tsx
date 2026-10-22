@@ -1,5 +1,9 @@
 import type { Metadata, Viewport } from "next";
+import { Caveat, Fraunces } from "next/font/google";
 import "./globals.css";
+
+const display = Fraunces({ subsets: ["latin"], variable: "--font-fraunces", display: "swap", axes: ["SOFT", "opsz"] });
+const hand = Caveat({ subsets: ["latin"], variable: "--font-caveat", display: "swap" });
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.APP_URL ?? "http://localhost:3000"),
@@ -13,7 +17,7 @@ export const viewport: Viewport = { themeColor: "#fffaf6", width: "device-width"
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${display.variable} ${hand.variable}`}>
       <body>{children}</body>
     </html>
   );
