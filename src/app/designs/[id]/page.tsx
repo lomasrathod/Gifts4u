@@ -13,7 +13,9 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const design = getDesign((await params).id);
-  return design ? { title: design.name, description: design.tagline } : {};
+  return design
+    ? { title: design.name, description: design.tagline, openGraph: { images: [{ url: `/covers/${design.id}.jpg`, width: 1200, height: 900 }] } }
+    : {};
 }
 
 export default async function DesignPage({ params }: { params: Promise<{ id: string }> }) {

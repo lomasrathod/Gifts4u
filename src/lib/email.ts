@@ -62,7 +62,7 @@ Giftvera`,
   delivery: (o: { to: string; buyerName: string; slug: string; designName: string }) => ({
     to: o.to,
     subject: `${o.buyerName} made something for you`,
-    text: `${o.buyerName} made you a ${o.designName}.
+    text: `${o.buyerName} made something just for you (${o.designName}).
 
 Open it here (best with sound on):
 ${giftUrl(o.slug)}

@@ -1,5 +1,5 @@
 // Shared message format for the 3D worlds. Used by the browser client,
-// the local Node server and the Cloudflare Durable Object.
+// the local Node server (development) and the Supabase Realtime transport (production).
 
 export const MAX_PLAYERS = 4;
 

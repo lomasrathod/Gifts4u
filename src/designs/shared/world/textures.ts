@@ -122,3 +122,21 @@ export function paintingTexture(seed: number) {
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
 }
+
+/** Loads a photo and crops it to fill a frame of the given width/height ratio, like CSS object-fit: cover. */
+export function photoTexture(url: string, frameAspect: number) {
+  const tex = new THREE.TextureLoader().load(url, (t) => {
+    const img = t.image as { width: number; height: number };
+    const aspect = img.width / img.height;
+    if (aspect > frameAspect) {
+      t.repeat.set(frameAspect / aspect, 1);
+      t.offset.set((1 - t.repeat.x) / 2, 0);
+    } else {
+      t.repeat.set(1, aspect / frameAspect);
+      t.offset.set(0, (1 - t.repeat.y) / 2);
+    }
+    t.needsUpdate = true;
+  });
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}

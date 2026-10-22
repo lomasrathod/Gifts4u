@@ -8,7 +8,7 @@ import { photoUrl } from "../shared";
 import { LocalPlayer, Players, type Ground, type Positions } from "../shared/world/Characters";
 import type { Input } from "../shared/world/Hud";
 import { Confetti } from "../shared/world/Particles";
-import { paintingTexture, paragraphTexture, textTexture } from "../shared/world/textures";
+import { paintingTexture, paragraphTexture, photoTexture, textTexture } from "../shared/world/textures";
 
 // A long gallery hall. The entrance is at +z, the final piece hangs on the far wall at -z.
 const HW = 6.5; // half width
@@ -209,9 +209,7 @@ function TitleOnWall({ title }: { title: string }) {
 function Frame({ x, z, side, index, photo, caption }: { x: number; z: number; side: number; index: number; photo?: string; caption?: string }) {
   const art = useMemo(() => {
     if (!photo) return paintingTexture(index);
-    const tex = new THREE.TextureLoader().load(photoUrl(photo));
-    tex.colorSpace = THREE.SRGBColorSpace;
-    return tex;
+    return photoTexture(photoUrl(photo), 2.7 / 2.0);
   }, [photo, index]);
   const plaque = useMemo(
     () => paragraphTexture(caption?.trim() || `Memory no. ${index + 1}`, { width: 768, height: 256, font: "italic 64px Georgia, serif", color: "#3b2418", bg: "#fbf6ec", padding: 36 }),

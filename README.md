@@ -1,61 +1,64 @@
 # Giftvera
 
-Personal digital gifts sent as a private link: a 3D island two to four people walk through together, or an animated letter that ends with a question. The buyer gets an email the moment the recipient answers.
+Personal digital gifts sent as a private link: shared 3D worlds you walk through together, and animated letters that end with a question. The buyer is told when the recipient answers.
 
-## What's in it
+## Designs
 
-| Area | What it does |
+| Design | Kind | Price |
+| --- | --- | --- |
+| Sunset Island | 3D, up to 4 people at once | $39.99 |
+| Our Museum | 3D, up to 4 people at once | $29.99 |
+| Paris Together | animated letter | $14.99 |
+| Our Universe | animated letter | $14.99 |
+| Sakura Night | animated letter | $12.99 |
+| Memory Wall | animated letter | $12.99 |
+| Kitty Letter | animated letter | $9.99 |
+
+Every gift includes one year online; "keep it forever" is a one-time add-on. Prices adjust by country, and `BACK15` gives 15% off (offered to recipients who want to "make one back").
+
+## Stack
+
+| Part | What |
 | --- | --- |
-| Designs | `sunset-island` (3D, multiplayer), `kitty-letter`, `our-universe`, `memory-wall`. Each is a config in `src/designs/registry.ts` plus one renderer component. |
-| Builder | Form with live phone preview, photo upload, AI "help me write it" interview, keepsake and delivery options. Draft is saved in the browser. |
-| Checkout | Dodo Payments (merchant of record) with one pay-what-you-want product; the price is set per order in `src/lib/pricing.ts`. Without keys, a dev checkout simulates payment. |
-| Pricing | One honest price per design, adjusted by country. A year online is included; "keep forever" is an upgrade. `BACK15` gives 15% off when a recipient makes one back. |
-| After payment | Receipt + private edit link by email, optional scheduled email to the recipient, link share page. |
-| Recipient | Gift page (`/g/<slug>`, noindex). Their answer and an optional written reply are emailed to the buyer. Then a "make one back" offer. |
-| Edit | `/edit` emails fresh edit links. `/edit/<token>` changes words and photos, shows answers, upgrades to forever, or deletes the gift. |
-| Realtime | `realtime/node-server.ts` locally, `realtime/worker.ts` (Cloudflare Durable Object) in production. Same protocol in `src/lib/realtime/protocol.ts`. Max 4 per room. |
-| Jobs | `GET /api/cron/run` (Bearer `CRON_SECRET`) sends scheduled gifts and "goes offline next month" reminders. Run it every 5 minutes. |
+| App | Next.js 16 (App Router), React 19, TypeScript, Tailwind 4 |
+| Database | Postgres through Drizzle. PGlite (in-process) when no `DATABASE_URL` is set. Tables are created on first use. |
+| Photos | Vercel Blob, private store, served only through `/api/media/[key]` |
+| 3D | react-three-fiber. Shared engine in `src/designs/shared/world/` |
+| Multiplayer | Supabase Realtime (broadcast + presence) in production, `realtime/node-server.ts` locally. Same messages either way (`src/lib/realtime/`). Max 4 per room. |
+| Payments | Dodo Payments, one pay-what-you-want product, amount set per order, webhook at `/api/webhooks/dodo` |
+| Email | Resend. Scheduled gifts use Resend's `scheduled_at`; a daily Vercel Cron hands over anything due in the next 48 hours and sends expiry reminders. |
+| AI writer | Claude, with a template fallback |
 
-## Run it locally
+## Run locally
 
 ```bash
 npm install
-cp .env.example .env.local   # every key is optional for local use
-npm run dev                  # web on :3000 and realtime on :8787
-```
-
-With no keys set: payments use the dev checkout, emails print to the terminal, photos go to `.data/uploads`, the AI writer uses a built-in template, and the database is `.data/giftvera.db`.
-
-Try the 3D demo with two browser windows on `http://localhost:3000/demo/sunset-island?room=test`.
-
-```bash
-npm test          # unit tests (pricing, webhook signatures, realtime rooms, AI fallback)
-npm run typecheck
+npm run dev        # web on :3000 and the realtime server on :8787
+npm test           # unit tests
 npm run build
 ```
 
-## Going live
+No keys are needed locally. Checkout is a fake "simulate payment" page, emails print to the terminal, photos go to `.data/uploads`, the database lives in `.data/pglite`.
 
-1. **Database:** create a Turso (libSQL) database, set `DATABASE_URL` and `DATABASE_AUTH_TOKEN`, then `npm run db:push`.
-2. **Payments:** in Dodo, create one one-time product with pay-what-you-want enabled. Set `DODO_API_KEY`, `DODO_PRODUCT_ID`, `DODO_ENV=live`, and add a webhook to `https://<your-domain>/api/webhooks/dodo` for `payment.succeeded`; put its secret in `DODO_WEBHOOK_SECRET`.
-3. **Email:** verify your domain in Resend and set `RESEND_API_KEY` and `EMAIL_FROM`.
-4. **Photos:** create an R2 bucket (private) and set the `R2_*` keys.
-5. **AI writer:** set `ANTHROPIC_API_KEY`.
-6. **Realtime:** `cd realtime && npx wrangler deploy`, then set `NEXT_PUBLIC_REALTIME_URL=wss://giftvera-realtime.<you>.workers.dev`.
-7. **Web app:** deploy the Next.js app (Vercel, or Cloudflare with OpenNext). Set `APP_URL` to the public URL. Schedule `/api/cron/run` every 5 minutes.
-8. Have a lawyer review `/legal` before launch.
+## Deploy on Vercel
 
-## Adding a design
+1. Import the GitHub repo into Vercel (framework: Next.js, no settings to change).
+2. **Database:** Storage → add Supabase (or Neon) from the Marketplace and connect it to the project. This sets `POSTGRES_URL`.
+3. **Photos:** Storage → create a Blob store (private) and connect it. This sets `BLOB_READ_WRITE_TOKEN`.
+4. **Multiplayer:** in Supabase → Project Settings → API, copy the URL and the anon/publishable key into `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+5. **Payments:** in Dodo, create one one-time "pay what you want" product. Set `DODO_API_KEY`, `DODO_PRODUCT_ID`, `DODO_ENV`, and add a webhook to `https://YOUR-DOMAIN/api/webhooks/dodo` for `payment.succeeded`; put its secret in `DODO_WEBHOOK_SECRET`.
+6. **Email:** verify your domain in Resend, set `RESEND_API_KEY` and `EMAIL_FROM`.
+7. **AI writer:** set `ANTHROPIC_API_KEY`.
+8. Set `CRON_SECRET` to a long random string and `APP_URL` to your domain, then redeploy.
 
-1. Add an entry to `designs` in `src/designs/registry.ts` (fields, photo slots, price, demo words, occasions).
-2. Create `src/designs/<id>/Renderer.tsx` taking `RendererProps` (`content`, `mode`, `onAnswer`). Use `min-h-[var(--gift-h,100svh)]` for full-height screens so the preview frame works.
-3. Register it in `src/designs/renderers.tsx` and draw its cover in `src/components/DesignCover.tsx`.
+Until step 2 and step 5 are done, the site is fully browsable with working demos, and checkout shows "opens very soon" instead of taking money.
 
-The builder, AI writer, checkout, gift page and edit page pick it up automatically.
+## Layout
 
-## Known gaps
-
-- Rate limiting is in memory, so it is per server instance. Move it to KV or Redis when running more than one instance.
-- No human check (Turnstile) on the AI writer yet; it is rate limited per IP.
-- The realtime server does not check that a room belongs to a paid gift. Rooms are only reachable through unguessable links.
-- Translations, analytics and an admin dashboard are not built yet.
+```
+src/app/            pages and API routes
+src/designs/        one folder per design, plus registry.ts (fields, prices, demo text)
+src/designs/shared/ shared helpers; world/ is the 3D engine (players, HUD, room, particles)
+src/lib/            db, payments, email, pricing, AI writer, storage, realtime client
+realtime/           local multiplayer server for development
+```

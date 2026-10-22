@@ -9,7 +9,7 @@ import { photoUrl } from "../shared";
 import { LocalPlayer, Players, type Ground, type Positions } from "../shared/world/Characters";
 import type { Input } from "../shared/world/Hud";
 import { Fireworks } from "../shared/world/Particles";
-import { textTexture } from "../shared/world/textures";
+import { photoTexture, textTexture } from "../shared/world/textures";
 
 const ISLAND_R = 13.2;
 const PIER = { x0: 11, x1: 26, halfW: 1.3 };
@@ -206,9 +206,7 @@ function Pier({ photos }: { photos: string[] }) {
 function PhotoBoard({ position, facing, photo, index }: { position: Vec3; facing: number; photo?: string; index: number }) {
   const texture = useMemo(() => {
     if (!photo) return textTexture(`♥  memory ${index + 1}  ♥`, { width: 512, height: 384, font: "bold 48px Georgia, serif", color: "#c23a5e", bg: "#fff3e8" });
-    const tex = new THREE.TextureLoader().load(photoUrl(photo));
-    tex.colorSpace = THREE.SRGBColorSpace;
-    return tex;
+    return photoTexture(photoUrl(photo), 2.05 / 1.5);
   }, [photo, index]);
   return (
     <group position={position} rotation-y={facing > 0 ? 0 : Math.PI}>
